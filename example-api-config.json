@@ -1,0 +1,100 @@
+{
+  "providers": [
+    {
+      "id": "openai-provider-1",
+      "name": "openai_primary",
+      "provider_type": "openai",
+      "config": {
+        "api_key": {
+          "type": "environment",
+          "variable_name": "OPENAI_API_KEY"
+        },
+        "organization_id": "org-123"
+      },
+      "enabled": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    },
+    {
+      "id": "anthropic-provider-1",
+      "name": "anthropic_primary",
+      "provider_type": "anthropic",
+      "config": {
+        "api_key": {
+          "type": "literal",
+          "value": "sk-ant-api03-your-key-here"
+        }
+      },
+      "enabled": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  ],
+  "models": [
+    {
+      "id": "gpt-4-model-1",
+      "key": "gpt-4",
+      "model_type": "chat",
+      "provider_id": "openai-provider-1",
+      "config_details": {
+        "max_tokens": "4096",
+        "temperature": "0.7"
+      },
+      "enabled": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    },
+    {
+      "id": "claude-model-1",
+      "key": "claude-3-sonnet-20240229",
+      "model_type": "chat",
+      "provider_id": "anthropic-provider-1",
+      "config_details": {
+        "max_tokens": "4096"
+      },
+      "enabled": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  ],
+  "pipelines": [
+    {
+      "id": "chat-pipeline-1",
+      "name": "default_chat",
+      "pipeline_type": "chat",
+      "description": "Default chat pipeline with model routing",
+      "plugins": [
+        {
+          "plugin_type": "model-router",
+          "config_data": {
+            "models": [
+              {
+                "key": "gpt-4",
+                "priority": 1
+              },
+              {
+                "key": "claude-3-sonnet-20240229",
+                "priority": 2
+              }
+            ]
+          },
+          "enabled": true,
+          "order_in_pipeline": 1
+        },
+        {
+          "plugin_type": "logging",
+          "config_data": {
+            "level": "info"
+          },
+          "enabled": true,
+          "order_in_pipeline": 2
+        }
+      ],
+      "enabled": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  ],
+  "version": "1.0.0",
+  "last_updated": "2024-01-01T00:00:00Z"
+}
