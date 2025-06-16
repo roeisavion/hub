@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use hub_gateway_core_types::{GatewayConfig, ModelConfig, Pipeline, PipelineType, PluginConfig, Provider};
-use reqwest::{Client, HeaderMap, HeaderValue};
+use reqwest::{Client, header::{HeaderMap, HeaderValue, HeaderName}};
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 use std::time::Duration;
@@ -55,7 +55,7 @@ impl ApiConfigProviderService {
     pub fn new(config: ApiClientConfig) -> Result<Self> {
         let mut headers = HeaderMap::new();
         if let (Some(header_name), Some(header_value)) = (&config.auth_header, &config.auth_value) {
-            let header_name = header_name.parse()
+            let header_name: HeaderName = header_name.parse()
                 .map_err(|e| anyhow!("Invalid auth header name '{}': {}", header_name, e))?;
             let header_value = HeaderValue::from_str(header_value)
                 .map_err(|e| anyhow!("Invalid auth header value: {}", e))?;

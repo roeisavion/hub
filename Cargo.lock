@@ -120,6 +120,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e16d2d3311acee920a9eb8d33b8cbc1787ce4a264e85f964c2404b969bdcd487"
 
 [[package]]
+name = "api_config"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum 0.7.9",
+ "axum-test",
+ "chrono",
+ "hub_gateway_core_types",
+ "log",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "utoipa 4.2.3",
+ "uuid",
+ "wiremock",
+]
+
+[[package]]
 name = "arbitrary"
 version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2349,6 +2369,7 @@ name = "hub"
 version = "0.4.3"
 dependencies = [
  "anyhow",
+ "api_config",
  "async-stream",
  "aws-config",
  "aws-credential-types",
