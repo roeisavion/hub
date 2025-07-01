@@ -39,31 +39,49 @@ impl ProviderRepository {
         data: &CreateProviderRequest,
         provider_type_str: &str,
         config_json_value: JsonValue,
+        client_id: Uuid,
     ) -> SqlxResult<Provider> {
-        let new_id = Uuid::new_v4(); // SQLx can often handle default UUIDs if schema is set up
+        let new_id = Uuid::new_v4();
         let enabled = data.enabled.unwrap_or(true);
         query_as!(
             Provider,
             r#"
-            INSERT INTO hub_llmgateway_ee_providers (id, name, provider_type, config_details, enabled)
-            VALUES ($1, $2, $3, $4, $5)
-            RETURNING id, name, provider_type, config_details, enabled, created_at, updated_at
+            INSERT INTO hub_llmgateway_ee_providers (id, name, provider_type, config_details, enabled, client_id)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING id, name, provider_type, config_details, enabled, client_id, created_at, updated_at
             "#,
             new_id,
             data.name,
             provider_type_str,
             config_json_value,
-            enabled
+            enabled,
+            client_id
         )
         .fetch_one(&self.pool)
         .await
     }
 
-    pub async fn find_by_id(&self, id: Uuid) -> SqlxResult<Option<Provider>> {
+    pub async fn find_by_id(&self, id: Uuid, client_id: Uuid) -> SqlxResult<Option<Provider>> {
         query_as!(
             Provider,
             r#"
-            SELECT id, name, provider_type, config_details, enabled, created_at, updated_at
+            SELECT id, name, provider_type, config_details, enabled, client_id, created_at, updated_at
+            FROM hub_llmgateway_ee_providers
+            WHERE id = $1 AND client_id = $2
+            "#,
+            id,
+            client_id
+        )
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    /// Finds a provider by ID without client restriction - used for system-level operations
+    pub async fn find_by_id_system_level(&self, id: Uuid) -> SqlxResult<Option<Provider>> {
+        query_as!(
+            Provider,
+            r#"
+            SELECT id, name, provider_type, config_details, enabled, client_id, created_at, updated_at
             FROM hub_llmgateway_ee_providers
             WHERE id = $1
             "#,
@@ -73,25 +91,42 @@ impl ProviderRepository {
         .await
     }
 
-    pub async fn find_by_name(&self, name: &str) -> SqlxResult<Option<Provider>> {
+    pub async fn find_by_name(&self, name: &str, client_id: Uuid) -> SqlxResult<Option<Provider>> {
         query_as!(
             Provider,
             r#"
-            SELECT id, name, provider_type, config_details, enabled, created_at, updated_at
+            SELECT id, name, provider_type, config_details, enabled, client_id, created_at, updated_at
             FROM hub_llmgateway_ee_providers
-            WHERE name = $1
+            WHERE name = $1 AND client_id = $2
             "#,
-            name
+            name,
+            client_id
         )
         .fetch_optional(&self.pool)
         .await
     }
 
-    pub async fn list(&self) -> SqlxResult<Vec<Provider>> {
+    pub async fn list(&self, client_id: Uuid) -> SqlxResult<Vec<Provider>> {
         query_as!(
             Provider,
             r#"
-            SELECT id, name, provider_type, config_details, enabled, created_at, updated_at
+            SELECT id, name, provider_type, config_details, enabled, client_id, created_at, updated_at
+            FROM hub_llmgateway_ee_providers
+            WHERE client_id = $1
+            ORDER BY name
+            "#,
+            client_id
+        )
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Lists all providers across all clients - used for system-level operations
+    pub async fn list_all(&self) -> SqlxResult<Vec<Provider>> {
+        query_as!(
+            Provider,
+            r#"
+            SELECT id, name, provider_type, config_details, enabled, client_id, created_at, updated_at
             FROM hub_llmgateway_ee_providers
             ORDER BY name
             "#
@@ -105,23 +140,10 @@ impl ProviderRepository {
         id: Uuid,
         data: &UpdateProviderRequest,
         config_json_value_opt: Option<JsonValue>,
+        client_id: Uuid,
     ) -> SqlxResult<Option<Provider>> {
-        // Fetch current and merge, or use COALESCE intelligently
-        // For simplicity, this query relies on COALESCE for all fields in data.
-        // If a field in `data` is None, COALESCE will keep the existing DB value.
-        // If config_json_value_opt is None, it means config is not being updated.
-        // If config_json_value_opt is Some(JsonValue::Null), it means clear it.
-        // If config_json_value_opt is Some(ActualValue), it means update it.
-
-        // We need to handle config_details carefully because COALESCE won't distinguish between
-        // not providing the field (keep current) vs. providing null (set to null).
-        // The current query_as! macro might not easily support conditional SET clauses.
-        // A more robust way would be to build the query string dynamically or fetch and merge, then save.
-        // For now, let's assume service layer prepares `config_json_value_opt` to be Some(value) or None (meaning no change to config_details).
-        // And if user wants to set config_details to NULL, they'd pass Some(JsonValue::Null)
-
         let current_provider = self
-            .find_by_id(id)
+            .find_by_id(id, client_id)
             .await?
             .ok_or_else(|| sqlx::Error::RowNotFound)?;
 
@@ -129,8 +151,8 @@ impl ProviderRepository {
         let enabled_to_update = data.enabled.unwrap_or(current_provider.enabled);
 
         let final_config_details: JsonValue = match config_json_value_opt {
-            Some(new_val) => new_val,                        // new_val is JsonValue
-            None => current_provider.config_details.clone(), // current_provider.config_details is JsonValue, clone it
+            Some(new_val) => new_val,
+            None => current_provider.config_details.clone(),
         };
 
         query_as!(
@@ -142,25 +164,27 @@ impl ProviderRepository {
                 config_details = $2,
                 enabled = $3,
                 updated_at = now()
-            WHERE id = $4
-            RETURNING id, name, provider_type, config_details, enabled, created_at, updated_at
+            WHERE id = $4 AND client_id = $5
+            RETURNING id, name, provider_type, config_details, enabled, client_id, created_at, updated_at
             "#,
             name_to_update,
-            final_config_details, // This is Option<JsonValue>
+            final_config_details,
             enabled_to_update,
-            id
+            id,
+            client_id
         )
         .fetch_optional(&self.pool)
         .await
     }
 
-    pub async fn delete(&self, id: Uuid) -> SqlxResult<u64> {
+    pub async fn delete(&self, id: Uuid, client_id: Uuid) -> SqlxResult<u64> {
         let result = query!(
             r#"
             DELETE FROM hub_llmgateway_ee_providers
-            WHERE id = $1
+            WHERE id = $1 AND client_id = $2
             "#,
-            id
+            id,
+            client_id
         )
         .execute(&self.pool)
         .await?;

@@ -23,20 +23,22 @@ impl PipelineRepository {
     pub async fn create_pipeline_with_plugins(
         &self,
         pipeline_data: &CreatePipelineRequestDto,
+        client_id: Uuid,
     ) -> Result<PipelineWithPlugins, ApiError> {
         let mut tx = self.pool.begin().await.map_err(ApiError::from)?;
 
         let pipeline = query_as!(
             Pipeline,
             r#"
-            INSERT INTO hub_llmgateway_ee_pipelines (name, pipeline_type, description, enabled)
-            VALUES ($1, $2, $3, $4)
-            RETURNING id, name, pipeline_type, description, enabled, created_at, updated_at
+            INSERT INTO hub_llmgateway_ee_pipelines (name, pipeline_type, description, enabled, client_id)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id, name, pipeline_type, description, enabled, client_id, created_at, updated_at
             "#,
             pipeline_data.name,
             pipeline_data.pipeline_type,
             pipeline_data.description,
-            pipeline_data.enabled
+            pipeline_data.enabled,
+            client_id
         )
         .fetch_one(&mut *tx) // Use &mut *tx for transaction
         .await
@@ -48,15 +50,16 @@ impl PipelineRepository {
                 let plugin_config = query_as!(PipelinePluginConfig,
                     r#"
                     INSERT INTO hub_llmgateway_ee_pipeline_plugin_configs 
-                        (pipeline_id, plugin_type, config_data, enabled, order_in_pipeline)
-                    VALUES ($1, $2, $3, $4, $5)
-                    RETURNING id, pipeline_id, plugin_type, config_data, enabled, order_in_pipeline, created_at, updated_at
+                        (pipeline_id, plugin_type, config_data, enabled, order_in_pipeline, client_id)
+                    VALUES ($1, $2, $3, $4, $5, $6)
+                    RETURNING id, pipeline_id, plugin_type, config_data, enabled, order_in_pipeline, client_id, created_at, updated_at
                     "#,
                     pipeline.id,
                     plugin_dto.plugin_type.to_string(),
                     plugin_dto.config_data, // Assuming config_data is already a serde_json::Value
                     plugin_dto.enabled,
-                    plugin_dto.order_in_pipeline
+                    plugin_dto.order_in_pipeline,
+                    client_id
                 )
                 .fetch_one(&mut *tx)
                 .await
@@ -73,6 +76,7 @@ impl PipelineRepository {
             pipeline_type: pipeline.pipeline_type,
             description: pipeline.description,
             enabled: pipeline.enabled,
+            client_id: pipeline.client_id,
             created_at: pipeline.created_at,
             updated_at: pipeline.updated_at,
             plugins: created_plugins,
@@ -82,14 +86,16 @@ impl PipelineRepository {
     pub async fn find_pipeline_by_id(
         &self,
         id: Uuid,
+        client_id: Uuid,
     ) -> Result<Option<PipelineWithPlugins>, ApiError> {
         let pipeline_row = sqlx::query!(
             r#"
-            SELECT id, name, pipeline_type, description, enabled, created_at, updated_at
+            SELECT id, name, pipeline_type, description, enabled, client_id, created_at, updated_at
             FROM hub_llmgateway_ee_pipelines
-            WHERE id = $1
+            WHERE id = $1 AND client_id = $2
             "#,
-            id
+            id,
+            client_id
         )
         .fetch_optional(&self.pool)
         .await
@@ -99,12 +105,12 @@ impl PipelineRepository {
             let plugins = sqlx::query_as!(
                 PipelinePluginConfig,
                 r#"
-                SELECT id, pipeline_id, plugin_type, config_data, enabled, order_in_pipeline, created_at, updated_at
+                SELECT id, pipeline_id, plugin_type, config_data, enabled, order_in_pipeline, client_id, created_at, updated_at
                 FROM hub_llmgateway_ee_pipeline_plugin_configs
-                WHERE pipeline_id = $1
+                WHERE pipeline_id = $1 AND client_id = $2
                 ORDER BY order_in_pipeline ASC
                 "#,
-                row.id
+                row.id, client_id
             )
             .fetch_all(&self.pool)
             .await
@@ -116,6 +122,7 @@ impl PipelineRepository {
                 pipeline_type: row.pipeline_type,
                 description: row.description,
                 enabled: row.enabled,
+                client_id: row.client_id,
                 created_at: row.created_at,
                 updated_at: row.updated_at,
                 plugins,
@@ -128,14 +135,16 @@ impl PipelineRepository {
     pub async fn find_pipeline_by_name(
         &self,
         name: &str,
+        client_id: Uuid,
     ) -> Result<Option<PipelineWithPlugins>, ApiError> {
         let pipeline_row = sqlx::query!(
             r#"
-            SELECT id, name, pipeline_type, description, enabled, created_at, updated_at
+            SELECT id, name, pipeline_type, description, enabled, client_id, created_at, updated_at
             FROM hub_llmgateway_ee_pipelines
-            WHERE name = $1
+            WHERE name = $1 AND client_id = $2
             "#,
-            name
+            name,
+            client_id
         )
         .fetch_optional(&self.pool)
         .await
@@ -145,12 +154,12 @@ impl PipelineRepository {
             let plugins = sqlx::query_as!(
                 PipelinePluginConfig,
                 r#"
-                SELECT id, pipeline_id, plugin_type, config_data, enabled, order_in_pipeline, created_at, updated_at
+                SELECT id, pipeline_id, plugin_type, config_data, enabled, order_in_pipeline, client_id, created_at, updated_at
                 FROM hub_llmgateway_ee_pipeline_plugin_configs
-                WHERE pipeline_id = $1
+                WHERE pipeline_id = $1 AND client_id = $2
                 ORDER BY order_in_pipeline ASC
                 "#,
-                row.id
+                row.id, client_id
             )
             .fetch_all(&self.pool)
             .await
@@ -162,6 +171,7 @@ impl PipelineRepository {
                 pipeline_type: row.pipeline_type,
                 description: row.description,
                 enabled: row.enabled,
+                client_id: row.client_id,
                 created_at: row.created_at,
                 updated_at: row.updated_at,
                 plugins,
@@ -171,14 +181,19 @@ impl PipelineRepository {
         }
     }
 
-    pub async fn list_pipelines(&self) -> Result<Vec<PipelineWithPlugins>, ApiError> {
+    pub async fn list_pipelines(
+        &self,
+        client_id: Uuid,
+    ) -> Result<Vec<PipelineWithPlugins>, ApiError> {
         let pipelines = query_as!(
             Pipeline,
             r#"
-            SELECT id, name, pipeline_type, description, enabled, created_at, updated_at
+            SELECT id, name, pipeline_type, description, enabled, client_id, created_at, updated_at
             FROM hub_llmgateway_ee_pipelines
+            WHERE client_id = $1
             ORDER BY created_at DESC
-            "#
+            "#,
+            client_id
         )
         .fetch_all(&self.pool)
         .await
@@ -193,12 +208,12 @@ impl PipelineRepository {
         let all_plugins = sqlx::query_as!(
             PipelinePluginConfig,
             r#"
-            SELECT id, pipeline_id, plugin_type, config_data, enabled, order_in_pipeline, created_at, updated_at
+            SELECT id, pipeline_id, plugin_type, config_data, enabled, order_in_pipeline, client_id, created_at, updated_at
             FROM hub_llmgateway_ee_pipeline_plugin_configs
-            WHERE pipeline_id = ANY($1)
+            WHERE pipeline_id = ANY($1) AND client_id = $2
             ORDER BY pipeline_id, order_in_pipeline ASC
             "#,
-            &pipeline_ids // Pass as slice
+            &pipeline_ids, client_id // Pass as slice
         )
         .fetch_all(&self.pool)
         .await
@@ -220,6 +235,67 @@ impl PipelineRepository {
                 pipeline_type: p.pipeline_type.clone(),
                 description: p.description.clone(),
                 enabled: p.enabled,
+                client_id: p.client_id,
+                created_at: p.created_at,
+                updated_at: p.updated_at,
+                plugins: plugins_map.remove(&p.id).unwrap_or_default(),
+            })
+            .collect();
+
+        Ok(result)
+    }
+
+    /// Lists all pipelines across all clients - used for system-level operations
+    pub async fn list_all_pipelines(&self) -> Result<Vec<PipelineWithPlugins>, ApiError> {
+        let pipelines = query_as!(
+            Pipeline,
+            r#"
+            SELECT id, name, pipeline_type, description, enabled, client_id, created_at, updated_at
+            FROM hub_llmgateway_ee_pipelines
+            ORDER BY created_at DESC
+            "#
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(ApiError::from)?;
+
+        if pipelines.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let pipeline_ids: Vec<Uuid> = pipelines.iter().map(|p| p.id).collect();
+
+        let all_plugins = sqlx::query_as!(
+            PipelinePluginConfig,
+            r#"
+            SELECT id, pipeline_id, plugin_type, config_data, enabled, order_in_pipeline, client_id, created_at, updated_at
+            FROM hub_llmgateway_ee_pipeline_plugin_configs
+            WHERE pipeline_id = ANY($1)
+            ORDER BY pipeline_id, order_in_pipeline ASC
+            "#,
+            &pipeline_ids
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(ApiError::from)?;
+
+        let mut plugins_map: HashMap<Uuid, Vec<PipelinePluginConfig>> = HashMap::new();
+        for plugin in all_plugins {
+            plugins_map
+                .entry(plugin.pipeline_id)
+                .or_default()
+                .push(plugin);
+        }
+
+        let result = pipelines
+            .into_iter()
+            .map(|p| PipelineWithPlugins {
+                id: p.id,
+                name: p.name.clone(),
+                pipeline_type: p.pipeline_type.clone(),
+                description: p.description.clone(),
+                enabled: p.enabled,
+                client_id: p.client_id,
                 created_at: p.created_at,
                 updated_at: p.updated_at,
                 plugins: plugins_map.remove(&p.id).unwrap_or_default(),
@@ -233,14 +309,16 @@ impl PipelineRepository {
         &self,
         id: Uuid,
         data: &UpdatePipelineRequestDto,
+        client_id: Uuid,
     ) -> Result<PipelineWithPlugins, ApiError> {
         let mut tx = self.pool.begin().await.map_err(ApiError::from)?;
 
         // Fetch current pipeline to check existence and for returning non-updated fields
         let current_pipeline = sqlx::query_as!(
             Pipeline,
-            "SELECT * FROM hub_llmgateway_ee_pipelines WHERE id = $1",
-            id
+            "SELECT * FROM hub_llmgateway_ee_pipelines WHERE id = $1 AND client_id = $2",
+            id,
+            client_id
         )
         .fetch_optional(&mut *tx)
         .await
@@ -257,8 +335,8 @@ impl PipelineRepository {
                 description = COALESCE($3, description),
                 enabled = COALESCE($4, enabled),
                 updated_at = NOW()
-            WHERE id = $5
-            RETURNING id, name, pipeline_type, description, enabled, created_at, updated_at
+            WHERE id = $5 AND client_id = $6
+            RETURNING id, name, pipeline_type, description, enabled, client_id, created_at, updated_at
             "#,
             data.name.as_ref().unwrap_or(&current_pipeline.name),
             data.pipeline_type
@@ -268,7 +346,8 @@ impl PipelineRepository {
                 .as_ref()
                 .or(current_pipeline.description.as_ref()), // Handles Option<String>
             data.enabled.unwrap_or(current_pipeline.enabled),
-            id
+            id,
+            client_id
         )
         .fetch_one(&mut *tx)
         .await
@@ -279,8 +358,8 @@ impl PipelineRepository {
         if let Some(plugins_dto_list) = &data.plugins {
             // Delete existing plugins for this pipeline
             sqlx::query!(
-                "DELETE FROM hub_llmgateway_ee_pipeline_plugin_configs WHERE pipeline_id = $1",
-                id
+                "DELETE FROM hub_llmgateway_ee_pipeline_plugin_configs WHERE pipeline_id = $1 AND client_id = $2",
+                id, client_id
             )
             .execute(&mut *tx)
             .await
@@ -291,15 +370,16 @@ impl PipelineRepository {
                 let new_plugin = query_as!(PipelinePluginConfig,
                     r#"
                     INSERT INTO hub_llmgateway_ee_pipeline_plugin_configs 
-                        (pipeline_id, plugin_type, config_data, enabled, order_in_pipeline)
-                    VALUES ($1, $2, $3, $4, $5)
-                    RETURNING id, pipeline_id, plugin_type, config_data, enabled, order_in_pipeline, created_at, updated_at
+                        (pipeline_id, plugin_type, config_data, enabled, order_in_pipeline, client_id)
+                    VALUES ($1, $2, $3, $4, $5, $6)
+                    RETURNING id, pipeline_id, plugin_type, config_data, enabled, order_in_pipeline, client_id, created_at, updated_at
                     "#,
                     updated_pipeline.id,
                     plugin_dto.plugin_type.to_string(),
                     plugin_dto.config_data,
                     plugin_dto.enabled,
-                    plugin_dto.order_in_pipeline
+                    plugin_dto.order_in_pipeline,
+                    client_id
                 )
                 .fetch_one(&mut *tx)
                 .await
@@ -311,12 +391,12 @@ impl PipelineRepository {
             let existing_plugins = sqlx::query_as!(
                 PipelinePluginConfig,
                 r#"
-                SELECT id, pipeline_id, plugin_type, config_data, enabled, order_in_pipeline, created_at, updated_at
+                SELECT id, pipeline_id, plugin_type, config_data, enabled, order_in_pipeline, client_id, created_at, updated_at
                 FROM hub_llmgateway_ee_pipeline_plugin_configs
-                WHERE pipeline_id = $1
+                WHERE pipeline_id = $1 AND client_id = $2
                 ORDER BY order_in_pipeline ASC
                 "#,
-                id
+                id, client_id
             )
             .fetch_all(&mut *tx)
             .await
@@ -332,19 +412,24 @@ impl PipelineRepository {
             pipeline_type: updated_pipeline.pipeline_type,
             description: updated_pipeline.description,
             enabled: updated_pipeline.enabled,
+            client_id: updated_pipeline.client_id,
             created_at: updated_pipeline.created_at, // This should be original creation time
             updated_at: updated_pipeline.updated_at,
             plugins: updated_plugins_list,
         })
     }
 
-    pub async fn delete_pipeline(&self, id: Uuid) -> Result<u64, ApiError> {
+    pub async fn delete_pipeline(&self, id: Uuid, client_id: Uuid) -> Result<u64, ApiError> {
         // The `ON DELETE CASCADE` constraint on `pipeline_plugin_configs.pipeline_id`
         // should handle deleting associated plugins automatically.
-        let result = sqlx::query!("DELETE FROM hub_llmgateway_ee_pipelines WHERE id = $1", id)
-            .execute(&self.pool)
-            .await
-            .map_err(ApiError::from)?;
+        let result = sqlx::query!(
+            "DELETE FROM hub_llmgateway_ee_pipelines WHERE id = $1 AND client_id = $2",
+            id,
+            client_id
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(ApiError::from)?;
 
         if result.rows_affected() == 0 {
             return Err(ApiError::NotFound("Pipeline not found".to_string()));

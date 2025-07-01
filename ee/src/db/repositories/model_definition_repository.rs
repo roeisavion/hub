@@ -14,45 +14,57 @@ impl ModelDefinitionRepository {
         Self { pool }
     }
 
-    pub async fn create(&self, data: &CreateModelDefinitionRequest) -> Result<ModelDefinition> {
+    pub async fn create(
+        &self,
+        data: &CreateModelDefinitionRequest,
+        client_id: Uuid,
+    ) -> Result<ModelDefinition> {
         let default_enabled = data.enabled.unwrap_or(true);
         let model_def = query_as!(ModelDefinition,
             r#"
-            INSERT INTO hub_llmgateway_ee_model_definitions (key, model_type, provider_id, config_details, enabled)
-            VALUES ($1, $2, $3, $4, $5)
-            RETURNING id, key, model_type, provider_id, config_details, enabled, created_at, updated_at
+            INSERT INTO hub_llmgateway_ee_model_definitions (key, model_type, provider_id, config_details, enabled, client_id)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING id, key, model_type, provider_id, config_details, enabled, client_id, created_at, updated_at
             "#,
             data.key,
             data.model_type,
             data.provider_id,
             data.config_details.as_ref().map(|val| val.clone()), // Option<Value> -> Option<Value>
-            default_enabled
+            default_enabled,
+            client_id
         )
         .fetch_one(&self.pool)
         .await?;
         Ok(model_def)
     }
 
-    pub async fn find_by_id(&self, id: Uuid) -> Result<Option<ModelDefinition>> {
+    pub async fn find_by_id(&self, id: Uuid, client_id: Uuid) -> Result<Option<ModelDefinition>> {
         query_as!(ModelDefinition,
-            "SELECT id, key, model_type, provider_id, config_details, enabled, created_at, updated_at FROM hub_llmgateway_ee_model_definitions WHERE id = $1",
-            id
+            "SELECT id, key, model_type, provider_id, config_details, enabled, client_id, created_at, updated_at FROM hub_llmgateway_ee_model_definitions WHERE id = $1 AND client_id = $2",
+            id, client_id
         )
         .fetch_optional(&self.pool)
         .await
     }
 
-    pub async fn find_by_key(&self, key: &str) -> Result<Option<ModelDefinition>> {
+    pub async fn find_by_key(&self, key: &str, client_id: Uuid) -> Result<Option<ModelDefinition>> {
         query_as!(ModelDefinition,
-            "SELECT id, key, model_type, provider_id, config_details, enabled, created_at, updated_at FROM hub_llmgateway_ee_model_definitions WHERE key = $1",
-            key
+            "SELECT id, key, model_type, provider_id, config_details, enabled, client_id, created_at, updated_at FROM hub_llmgateway_ee_model_definitions WHERE key = $1 AND client_id = $2",
+            key, client_id
         )
         .fetch_optional(&self.pool)
         .await
     }
 
-    pub async fn list(&self) -> Result<Vec<ModelDefinition>> {
-        query_as!(ModelDefinition, "SELECT id, key, model_type, provider_id, config_details, enabled, created_at, updated_at FROM hub_llmgateway_ee_model_definitions ORDER BY key ASC")
+    pub async fn list(&self, client_id: Uuid) -> Result<Vec<ModelDefinition>> {
+        query_as!(ModelDefinition, "SELECT id, key, model_type, provider_id, config_details, enabled, client_id, created_at, updated_at FROM hub_llmgateway_ee_model_definitions WHERE client_id = $1 ORDER BY key ASC", client_id)
+            .fetch_all(&self.pool)
+            .await
+    }
+
+    /// Lists all model definitions across all clients - used for system-level operations
+    pub async fn list_all(&self) -> Result<Vec<ModelDefinition>> {
+        query_as!(ModelDefinition, "SELECT id, key, model_type, provider_id, config_details, enabled, client_id, created_at, updated_at FROM hub_llmgateway_ee_model_definitions ORDER BY key ASC")
             .fetch_all(&self.pool)
             .await
     }
@@ -61,10 +73,11 @@ impl ModelDefinitionRepository {
         &self,
         id: Uuid,
         data: &UpdateModelDefinitionRequest,
+        client_id: Uuid,
     ) -> Result<ModelDefinition> {
         // Fetch current to handle Option fields correctly
         let current_model = self
-            .find_by_id(id)
+            .find_by_id(id, client_id)
             .await?
             .ok_or_else(|| sqlx::Error::RowNotFound)?;
 
@@ -87,25 +100,27 @@ impl ModelDefinitionRepository {
             r#"
             UPDATE hub_llmgateway_ee_model_definitions
             SET key = $1, model_type = $2, provider_id = $3, config_details = $4, enabled = $5, updated_at = NOW()
-            WHERE id = $6
-            RETURNING id, key, model_type, provider_id, config_details, enabled, created_at, updated_at
+            WHERE id = $6 AND client_id = $7
+            RETURNING id, key, model_type, provider_id, config_details, enabled, client_id, created_at, updated_at
             "#,
             key,
             model_type,
             provider_id,
             config_details_to_update,
             enabled,
-            id
+            id,
+            client_id
         )
         .fetch_one(&self.pool)
         .await?;
         Ok(model_def)
     }
 
-    pub async fn delete(&self, id: Uuid) -> Result<u64> {
+    pub async fn delete(&self, id: Uuid, client_id: Uuid) -> Result<u64> {
         let result = query!(
-            "DELETE FROM hub_llmgateway_ee_model_definitions WHERE id = $1",
-            id
+            "DELETE FROM hub_llmgateway_ee_model_definitions WHERE id = $1 AND client_id = $2",
+            id,
+            client_id
         )
         .execute(&self.pool)
         .await?;
