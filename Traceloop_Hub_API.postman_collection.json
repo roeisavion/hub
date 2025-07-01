@@ -1,0 +1,1175 @@
+{
+	"info": {
+		"_postman_id": "12345678-1234-1234-1234-123456789012",
+		"name": "Traceloop Hub API",
+		"description": "Complete API collection for Traceloop Hub - Open Source LLM Gateway with Enterprise Edition features",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "12345678"
+	},
+	"item": [
+		{
+			"name": "Health & Monitoring",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Check if the service is healthy and running"
+					},
+					"response": []
+				},
+				{
+					"name": "Prometheus Metrics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/metrics",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"metrics"
+							]
+						},
+						"description": "Get Prometheus metrics for monitoring"
+					},
+					"response": []
+				}
+			],
+			"description": "Health check and monitoring endpoints"
+		},
+		{
+			"name": "OpenAI Compatible API (OSS)",
+			"item": [
+				{
+					"name": "Chat Completions",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{apiKey}}",
+								"description": "API key for authentication"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"model\": \"gpt-4\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a helpful assistant.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Hello, how are you?\"\n    }\n  ],\n  \"temperature\": 0.7,\n  \"top_p\": 1.0,\n  \"n\": 1,\n  \"stream\": false,\n  \"stop\": null,\n  \"max_tokens\": 150,\n  \"max_completion_tokens\": null,\n  \"parallel_tool_calls\": true,\n  \"presence_penalty\": 0,\n  \"frequency_penalty\": 0,\n  \"logit_bias\": null,\n  \"tool_choice\": null,\n  \"tools\": null,\n  \"user\": null,\n  \"logprobs\": false,\n  \"top_logprobs\": null,\n  \"response_format\": null\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/chat/completions",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"chat",
+								"completions"
+							]
+						},
+						"description": "Create a chat completion with all optional parameters included. Optional parameters: temperature, top_p, n, stream, stop, max_tokens, max_completion_tokens, parallel_tool_calls, presence_penalty, frequency_penalty, logit_bias, tool_choice, tools, user, logprobs, top_logprobs, response_format"
+					},
+					"response": []
+				},
+				{
+					"name": "Chat Completions (Streaming)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"model\": \"gpt-4\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Tell me a short story\"\n    }\n  ],\n  \"temperature\": 0.7,\n  \"max_tokens\": 200,\n  \"stream\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/chat/completions",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"chat",
+								"completions"
+							]
+						},
+						"description": "Create a streaming chat completion"
+					},
+					"response": []
+				},
+				{
+					"name": "Text Completions",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"model\": \"gpt-3.5-turbo\",\n  \"prompt\": \"Once upon a time\",\n  \"max_tokens\": 100,\n  \"temperature\": 0.7,\n  \"top_p\": 1.0,\n  \"n\": 1,\n  \"stream\": false,\n  \"logprobs\": null,\n  \"echo\": false,\n  \"stop\": null,\n  \"presence_penalty\": 0,\n  \"frequency_penalty\": 0,\n  \"best_of\": 1,\n  \"logit_bias\": null,\n  \"user\": null\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/completions",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"completions"
+							]
+						},
+						"description": "Create a text completion with all optional parameters. Optional parameters: max_tokens, temperature, top_p, n, stream, logprobs, echo, stop, presence_penalty, frequency_penalty, best_of, logit_bias, user"
+					},
+					"response": []
+				},
+				{
+					"name": "Embeddings",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"model\": \"textembedding-gecko\",\n  \"input\": \"The quick brown fox jumps over the lazy dog\",\n  \"encoding_format\": \"float\",\n  \"dimensions\": null,\n  \"user\": null\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/embeddings",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"embeddings"
+							]
+						},
+						"description": "Create embeddings for the given input text. Optional parameters: encoding_format, dimensions, user"
+					},
+					"response": []
+				}
+			],
+			"description": "OpenAI-compatible API endpoints for LLM interactions"
+		},
+		{
+			"name": "Enterprise Edition - Providers",
+			"item": [
+				{
+					"name": "Create OpenAI Provider",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-traceloop-hub",
+								"value": "{{clientKey}}",
+								"description": "Client authentication key for Traceloop Hub"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"my-openai-provider\",\n  \"provider_type\": \"openai\",\n  \"config\": {\n    \"api_key\": {\n      \"type\": \"literal\",\n      \"value\": \"sk-your-openai-api-key\",\n      \"encrypted\": false\n    },\n    \"organization_id\": \"org-your-org-id\",\n    \"base_url\": \"https://api.openai.com/v1\"\n  },\n  \"enabled\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/providers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"providers"
+							]
+						},
+						"description": "Create a new OpenAI provider configuration. Optional parameters: config.api_key.encrypted, config.organization_id, config.base_url, enabled"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Azure Provider",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-traceloop-hub",
+								"value": "{{clientKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"my-azure-provider\",\n  \"provider_type\": \"azure\",\n  \"config\": {\n    \"api_key\": {\n      \"type\": \"environment\",\n      \"variable_name\": \"AZURE_OPENAI_API_KEY\",\n      \"encrypted\": false\n    },\n    \"resource_name\": \"your-resource-name\",\n    \"api_version\": \"2023-12-01-preview\",\n    \"base_url\": \"https://your-resource.openai.azure.com\"\n  },\n  \"enabled\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/providers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"providers"
+							]
+						},
+						"description": "Create an Azure OpenAI provider configuration. Optional parameters: config.api_key.encrypted, config.base_url, enabled"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Anthropic Provider",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-traceloop-hub",
+								"value": "{{clientKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"my-anthropic-provider\",\n  \"provider_type\": \"anthropic\",\n  \"config\": {\n    \"api_key\": {\n      \"type\": \"literal\",\n      \"value\": \"sk-ant-your-anthropic-key\",\n      \"encrypted\": false\n    }\n  },\n  \"enabled\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/providers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"providers"
+							]
+						},
+						"description": "Create an Anthropic provider configuration. Optional parameters: config.api_key.encrypted, enabled"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Bedrock Provider",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-traceloop-hub",
+								"value": "{{clientKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"my-bedrock-provider\",\n  \"provider_type\": \"bedrock\",\n  \"config\": {\n    \"aws_access_key_id\": {\n      \"type\": \"environment\",\n      \"variable_name\": \"AWS_ACCESS_KEY_ID\",\n      \"encrypted\": false\n    },\n    \"aws_secret_access_key\": {\n      \"type\": \"environment\",\n      \"variable_name\": \"AWS_SECRET_ACCESS_KEY\",\n      \"encrypted\": false\n    },\n    \"aws_session_token\": {\n      \"type\": \"environment\",\n      \"variable_name\": \"AWS_SESSION_TOKEN\",\n      \"encrypted\": false\n    },\n    \"region\": \"us-east-1\",\n    \"use_iam_role\": true,\n    \"inference_profile_id\": \"us\"\n  },\n  \"enabled\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/providers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"providers"
+							]
+						},
+						"description": "Create an AWS Bedrock provider configuration. Optional parameters: config.aws_access_key_id, config.aws_secret_access_key, config.aws_session_token, config.use_iam_role, config.inference_profile_id, enabled"
+					},
+					"response": []
+				},
+				{
+					"name": "Create VertexAI Provider",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-traceloop-hub",
+								"value": "{{clientKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"my-vertexai-provider\",\n  \"provider_type\": \"vertexai\",\n  \"config\": {\n    \"project_id\": \"your-gcp-project-id\",\n    \"location\": \"us-central1\",\n    \"credentials_path\": \"/path/to/service-account.json\",\n    \"api_key\": {\n      \"type\": \"literal\",\n      \"value\": \"your-api-key\",\n      \"encrypted\": false\n    }\n  },\n  \"enabled\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/providers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"providers"
+							]
+						},
+						"description": "Create a Google VertexAI provider configuration. Optional parameters: config.credentials_path, config.api_key, enabled"
+					},
+					"response": []
+				},
+				{
+					"name": "List Providers",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-traceloop-hub",
+								"value": "{{clientKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/providers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"providers"
+							]
+						},
+						"description": "Get list of all provider configurations"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Provider by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-traceloop-hub",
+								"value": "{{clientKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/providers/{{providerId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"providers",
+								"{{providerId}}"
+							]
+						},
+						"description": "Get a specific provider configuration by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Provider",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-traceloop-hub",
+								"value": "{{clientKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"updated-provider-name\",\n  \"config\": {\n    \"api_key\": {\n      \"type\": \"literal\",\n      \"value\": \"sk-new-api-key\",\n      \"encrypted\": false\n    }\n  },\n  \"enabled\": false\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/providers/{{providerId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"providers",
+								"{{providerId}}"
+							]
+						},
+						"description": "Update an existing provider configuration. Optional parameters: name, config, enabled"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Provider",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-traceloop-hub",
+								"value": "{{clientKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/providers/{{providerId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"providers",
+								"{{providerId}}"
+							]
+						},
+						"description": "Delete a provider configuration"
+					},
+					"response": []
+				}
+			],
+			"description": "Provider management endpoints (Enterprise Edition)"
+		},
+		{
+			"name": "Enterprise Edition - Model Definitions",
+			"item": [
+				{
+					"name": "Create Model Definition",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-traceloop-hub",
+								"value": "{{clientKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"key\": \"gpt-4o-openai\",\n  \"model_type\": \"gpt-4o\",\n  \"provider_id\": \"{{providerId}}\",\n  \"config_details\": {\n    \"deployment\": \"my-deployment-id\",\n    \"custom_param\": \"value\"\n  },\n  \"enabled\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/model-definitions",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"model-definitions"
+							]
+						},
+						"description": "Create a new model definition. Optional parameters: config_details, enabled"
+					},
+					"response": []
+				},
+				{
+					"name": "List Model Definitions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-traceloop-hub",
+								"value": "{{clientKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/model-definitions",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"model-definitions"
+							]
+						},
+						"description": "Get list of all model definitions"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Model Definition by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-traceloop-hub",
+								"value": "{{clientKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/model-definitions/{{modelDefinitionId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"model-definitions",
+								"{{modelDefinitionId}}"
+							]
+						},
+						"description": "Get a specific model definition by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Model Definition by Key",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-traceloop-hub",
+								"value": "{{clientKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/model-definitions/key/{{modelKey}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"model-definitions",
+								"key",
+								"{{modelKey}}"
+							]
+						},
+						"description": "Get a model definition by its key"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Model Definition",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-traceloop-hub",
+								"value": "{{clientKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"key\": \"gpt-4o-openai-updated\",\n  \"model_type\": \"gpt-4o-mini\",\n  \"provider_id\": \"{{providerId}}\",\n  \"config_details\": {\n    \"deployment\": \"new-deployment-id\",\n    \"custom_param\": \"updated-value\"\n  },\n  \"enabled\": false\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/model-definitions/{{modelDefinitionId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"model-definitions",
+								"{{modelDefinitionId}}"
+							]
+						},
+						"description": "Update an existing model definition. Optional parameters: key, model_type, provider_id, config_details, enabled"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Model Definition",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-traceloop-hub",
+								"value": "{{clientKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/model-definitions/{{modelDefinitionId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"model-definitions",
+								"{{modelDefinitionId}}"
+							]
+						},
+						"description": "Delete a model definition"
+					},
+					"response": []
+				}
+			],
+			"description": "Model definition management endpoints (Enterprise Edition)"
+		},
+		{
+			"name": "Enterprise Edition - Pipelines",
+			"item": [
+				{
+					"name": "Create Pipeline",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-traceloop-hub",
+								"value": "{{clientKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"default_chat_pipeline\",\n  \"pipeline_type\": \"chat\",\n  \"description\": \"Default pipeline for chat completions\",\n  \"plugins\": [\n    {\n      \"plugin_type\": \"logging\",\n      \"config_data\": {\n        \"level\": \"info\"\n      },\n      \"enabled\": true,\n      \"order_in_pipeline\": 1\n    },\n    {\n      \"plugin_type\": \"tracing\",\n      \"config_data\": {\n        \"endpoint\": \"https://api.traceloop.com/v1/traces\",\n        \"api_key\": \"your-traceloop-api-key\",\n        \"enabled\": true\n      },\n      \"enabled\": true,\n      \"order_in_pipeline\": 2\n    },\n    {\n      \"plugin_type\": \"model-router\",\n      \"config_data\": {\n        \"strategy\": \"ordered_fallback\",\n        \"models\": [\n          {\n            \"key\": \"gpt-4o-openai\",\n            \"priority\": 0\n          },\n          {\n            \"key\": \"claude-3-5-sonnet\",\n            \"priority\": 1\n          }\n        ]\n      },\n      \"enabled\": true,\n      \"order_in_pipeline\": 3\n    }\n  ],\n  \"enabled\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/pipelines",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"pipelines"
+							]
+						},
+						"description": "Create a new pipeline configuration. Optional parameters: description, plugins, enabled. Plugin optional parameters: enabled, order_in_pipeline, config_data.strategy (for model-router)"
+					},
+					"response": []
+				},
+				{
+					"name": "List Pipelines",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-traceloop-hub",
+								"value": "{{clientKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/pipelines",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"pipelines"
+							]
+						},
+						"description": "Get list of all pipeline configurations"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Pipeline by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-traceloop-hub",
+								"value": "{{clientKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/pipelines/{{pipelineId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"pipelines",
+								"{{pipelineId}}"
+							]
+						},
+						"description": "Get a specific pipeline configuration by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Pipeline by Name",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-traceloop-hub",
+								"value": "{{clientKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/pipelines/name/{{pipelineName}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"pipelines",
+								"name",
+								"{{pipelineName}}"
+							]
+						},
+						"description": "Get a pipeline configuration by name"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Pipeline",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-traceloop-hub",
+								"value": "{{clientKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"updated_chat_pipeline\",\n  \"pipeline_type\": \"chat\",\n  \"description\": \"Updated pipeline description\",\n  \"plugins\": [\n    {\n      \"plugin_type\": \"model-router\",\n      \"config_data\": {\n        \"strategy\": \"simple\",\n        \"models\": [\n          {\n            \"key\": \"gpt-4o-openai\",\n            \"priority\": 0\n          }\n        ]\n      },\n      \"enabled\": true,\n      \"order_in_pipeline\": 1\n    }\n  ],\n  \"enabled\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/pipelines/{{pipelineId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"pipelines",
+								"{{pipelineId}}"
+							]
+						},
+						"description": "Update an existing pipeline configuration. Optional parameters: name, pipeline_type, description, plugins, enabled"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Pipeline",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-traceloop-hub",
+								"value": "{{clientKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/pipelines/{{pipelineId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"pipelines",
+								"{{pipelineId}}"
+							]
+						},
+						"description": "Delete a pipeline configuration"
+					},
+					"response": []
+				}
+			],
+			"description": "Pipeline management endpoints (Enterprise Edition)"
+		},
+		{
+			"name": "Enterprise Edition - Clients",
+			"item": [
+				{
+					"name": "Create Client",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"acme-corporation\",\n  \"client_key\": \"cl_1234567890abcdef\",\n  \"enabled\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/clients",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"clients"
+							]
+						},
+						"description": "Create a new client for tenant segregation. Optional parameters: enabled"
+					},
+					"response": []
+				},
+				{
+					"name": "List Clients",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/clients",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"clients"
+							]
+						},
+						"description": "Get list of all clients"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Client by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/clients/{{clientId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"clients",
+								"{{clientId}}"
+							]
+						},
+						"description": "Get a specific client by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Client",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"acme-corporation-updated\",\n  \"enabled\": false\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/clients/{{clientId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"clients",
+								"{{clientId}}"
+							]
+						},
+						"description": "Update an existing client. Optional parameters: name, enabled"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Client",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/ee/api/v1/clients/{{clientId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ee",
+								"api",
+								"v1",
+								"clients",
+								"{{clientId}}"
+							]
+						},
+						"description": "Delete a client"
+					},
+					"response": []
+				}
+			],
+			"description": "Client management endpoints for tenant segregation (Enterprise Edition)"
+		},
+		{
+			"name": "Documentation",
+			"item": [
+				{
+					"name": "OpenAPI Specification",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api-docs/openapi.json",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api-docs",
+								"openapi.json"
+							]
+						},
+						"description": "Get the OpenAPI specification for the Hub API"
+					},
+					"response": []
+				},
+				{
+					"name": "Swagger UI",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/swagger-ui/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"swagger-ui",
+								""
+							]
+						},
+						"description": "Access the Swagger UI for interactive API documentation"
+					},
+					"response": []
+				}
+			],
+			"description": "API documentation endpoints"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"description": "Base URL for the Traceloop Hub API"
+		},
+		{
+			"key": "apiKey",
+			"value": "YOUR_API_KEY_HERE",
+			"description": "API key for OpenAI-compatible endpoints"
+		},
+		{
+			"key": "clientKey",
+			"value": "cl_your_client_key_here",
+			"description": "Client key for Enterprise Edition authentication (x-traceloop-hub header)"
+		},
+		{
+			"key": "providerId",
+			"value": "provider-uuid-here",
+			"description": "UUID of a provider for testing"
+		},
+		{
+			"key": "modelDefinitionId",
+			"value": "model-definition-uuid-here",
+			"description": "UUID of a model definition for testing"
+		},
+		{
+			"key": "modelKey",
+			"value": "gpt-4o-openai",
+			"description": "Key of a model definition for testing"
+		},
+		{
+			"key": "pipelineId",
+			"value": "pipeline-uuid-here",
+			"description": "UUID of a pipeline for testing"
+		},
+		{
+			"key": "pipelineName",
+			"value": "default",
+			"description": "Name of a pipeline for testing"
+		},
+		{
+			"key": "clientId",
+			"value": "client-uuid-here",
+			"description": "UUID of a client for testing"
+		}
+	]
+} 

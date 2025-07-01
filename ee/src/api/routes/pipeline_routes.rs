@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Path, State, Extension},
     http::StatusCode,
     routing::{get, post},
     Json, Router,
@@ -9,6 +9,7 @@ use sqlx::types::Uuid;
 use crate::{
     dto::{CreatePipelineRequestDto, PipelineResponseDto, UpdatePipelineRequestDto},
     errors::ApiError,
+    middleware::auth::ClientContext,
     AppState,
 };
 
@@ -29,9 +30,10 @@ use crate::{
 #[axum::debug_handler]
 async fn create_pipeline_handler(
     State(app_state): State<AppState>,
+    Extension(client_context): Extension<ClientContext>,
     Json(payload): Json<CreatePipelineRequestDto>,
 ) -> Result<(StatusCode, Json<PipelineResponseDto>), ApiError> {
-    let result = app_state.pipeline_service.create_pipeline(payload).await?;
+    let result = app_state.pipeline_service.create_pipeline(payload, client_context.client_id).await?;
     Ok((StatusCode::CREATED, Json(result)))
 }
 
@@ -47,8 +49,9 @@ async fn create_pipeline_handler(
 #[axum::debug_handler]
 async fn list_pipelines_handler(
     State(app_state): State<AppState>,
+    Extension(client_context): Extension<ClientContext>,
 ) -> Result<Json<Vec<PipelineResponseDto>>, ApiError> {
-    let result = app_state.pipeline_service.list_pipelines().await?;
+    let result = app_state.pipeline_service.list_pipelines(client_context.client_id).await?;
     Ok(Json(result))
 }
 
@@ -69,8 +72,9 @@ async fn list_pipelines_handler(
 async fn get_pipeline_handler(
     State(app_state): State<AppState>,
     Path(id): Path<Uuid>,
+    Extension(client_context): Extension<ClientContext>,
 ) -> Result<Json<PipelineResponseDto>, ApiError> {
-    let result = app_state.pipeline_service.get_pipeline(id).await?;
+    let result = app_state.pipeline_service.get_pipeline(id, client_context.client_id).await?;
     Ok(Json(result))
 }
 
@@ -91,10 +95,11 @@ async fn get_pipeline_handler(
 async fn get_pipeline_by_name_handler(
     State(app_state): State<AppState>,
     Path(name): Path<String>,
+    Extension(client_context): Extension<ClientContext>,
 ) -> Result<Json<PipelineResponseDto>, ApiError> {
     let result = app_state
         .pipeline_service
-        .get_pipeline_by_name(&name)
+        .get_pipeline_by_name(&name, client_context.client_id)
         .await?;
     Ok(Json(result))
 }
@@ -119,11 +124,12 @@ async fn get_pipeline_by_name_handler(
 async fn update_pipeline_handler(
     State(app_state): State<AppState>,
     Path(id): Path<Uuid>,
+    Extension(client_context): Extension<ClientContext>,
     Json(payload): Json<UpdatePipelineRequestDto>,
 ) -> Result<Json<PipelineResponseDto>, ApiError> {
     let result = app_state
         .pipeline_service
-        .update_pipeline(id, payload)
+        .update_pipeline(id, payload, client_context.client_id)
         .await?;
     Ok(Json(result))
 }
@@ -145,9 +151,10 @@ async fn update_pipeline_handler(
 async fn delete_pipeline_handler(
     State(app_state): State<AppState>,
     Path(id): Path<Uuid>,
+    Extension(client_context): Extension<ClientContext>,
 ) -> Result<Json<()>, ApiError> {
     // Return Json<()> for successful deletion with no body
-    app_state.pipeline_service.delete_pipeline(id).await?;
+    app_state.pipeline_service.delete_pipeline(id, client_context.client_id).await?;
     Ok(Json(()))
 }
 

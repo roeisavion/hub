@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Path, State, Extension},
     http::StatusCode,
     routing::{get, post},
     Json, Router,
@@ -9,12 +9,12 @@ use sqlx::types::Uuid;
 use crate::{
     dto::{CreateProviderRequest, ProviderResponse, UpdateProviderRequest},
     errors::ApiError,
+    middleware::auth::ClientContext,
     AppState,
 };
 
 /// Creates the Axum router for provider CRUD operations.
 pub fn provider_routes() -> Router<AppState> {
-    // No longer takes AppState, returns Router<AppState>
     Router::new()
         .route(
             "/",
@@ -43,10 +43,13 @@ pub fn provider_routes() -> Router<AppState> {
 #[axum::debug_handler]
 async fn create_provider_handler(
     State(app_state): State<AppState>,
+    Extension(client_context): Extension<ClientContext>,
     Json(payload): Json<CreateProviderRequest>,
 ) -> Result<(StatusCode, Json<ProviderResponse>), ApiError> {
     let service = &app_state.provider_service;
-    let provider_response = service.create_provider(payload).await?;
+    let provider_response = service
+        .create_provider(payload, client_context.client_id)
+        .await?;
     Ok((StatusCode::CREATED, Json(provider_response)))
 }
 
@@ -62,9 +65,10 @@ async fn create_provider_handler(
 #[axum::debug_handler]
 async fn list_providers_handler(
     State(app_state): State<AppState>,
+    Extension(client_context): Extension<ClientContext>,
 ) -> Result<(StatusCode, Json<Vec<ProviderResponse>>), ApiError> {
     let service = &app_state.provider_service;
-    let provider_responses = service.list_providers().await?;
+    let provider_responses = service.list_providers(client_context.client_id).await?;
     Ok((StatusCode::OK, Json(provider_responses)))
 }
 
@@ -85,9 +89,10 @@ async fn list_providers_handler(
 async fn get_provider_handler(
     State(app_state): State<AppState>,
     Path(id): Path<Uuid>,
+    Extension(client_context): Extension<ClientContext>,
 ) -> Result<Json<ProviderResponse>, ApiError> {
     let service = &app_state.provider_service;
-    let provider_response = service.get_provider(id).await?;
+    let provider_response = service.get_provider(id, client_context.client_id).await?;
     Ok(Json(provider_response))
 }
 
@@ -111,10 +116,13 @@ async fn get_provider_handler(
 async fn update_provider_handler(
     State(app_state): State<AppState>,
     Path(id): Path<Uuid>,
+    Extension(client_context): Extension<ClientContext>,
     Json(payload): Json<UpdateProviderRequest>,
 ) -> Result<Json<ProviderResponse>, ApiError> {
     let service = &app_state.provider_service;
-    let provider_response = service.update_provider(id, payload).await?;
+    let provider_response = service
+        .update_provider(id, payload, client_context.client_id)
+        .await?;
     Ok(Json(provider_response))
 }
 
@@ -135,7 +143,8 @@ async fn update_provider_handler(
 async fn delete_provider_handler(
     State(app_state): State<AppState>,
     Path(id): Path<Uuid>,
+    Extension(client_context): Extension<ClientContext>,
 ) -> Result<(), ApiError> {
     let service = &app_state.provider_service;
-    service.delete_provider(id).await
+    service.delete_provider(id, client_context.client_id).await
 }

@@ -2,6 +2,7 @@ pub mod api;
 pub mod db;
 pub mod dto;
 pub mod errors;
+pub mod middleware;
 pub mod services;
 pub mod state;
 
@@ -20,7 +21,7 @@ use crate::db::repositories::{
 
 // Services
 use crate::services::{
-    config_provider_service::ConfigProviderService,
+    client_service::ClientService, config_provider_service::ConfigProviderService,
     model_definition_service::ModelDefinitionService, pipeline_service::PipelineService,
     provider_service::ProviderService,
 };
@@ -29,6 +30,7 @@ use crate::services::{
 #[derive(Clone, axum::extract::FromRef)]
 pub struct AppState {
     pub db_pool: PgPool, // Keep for services that might need direct pool or for test setups
+    pub client_service: Arc<ClientService>,
     pub provider_service: Arc<ProviderService>,
     pub model_definition_service: Arc<ModelDefinitionService>,
     pub pipeline_service: Arc<PipelineService>,
@@ -45,6 +47,7 @@ pub fn ee_api_bundle(pool: PgPool) -> (Router, Arc<ConfigProviderService>) {
 
     // Initialize services
     // ProviderService and ModelDefinitionService create their own repo instances internally using the pool.
+    let client_service = Arc::new(ClientService::new(pool.clone()));
     let provider_service = Arc::new(ProviderService::new(pool.clone()));
     let model_definition_service = Arc::new(ModelDefinitionService::new(pool.clone()));
     // PipelineService takes pre-initialized Arc<Repository> instances.
@@ -62,6 +65,7 @@ pub fn ee_api_bundle(pool: PgPool) -> (Router, Arc<ConfigProviderService>) {
 
     let app_state = AppState {
         db_pool: pool.clone(), // Store the pool in AppState as well
+        client_service,
         provider_service,
         model_definition_service,
         pipeline_service,
@@ -69,17 +73,30 @@ pub fn ee_api_bundle(pool: PgPool) -> (Router, Arc<ConfigProviderService>) {
     };
 
     let router = Router::new()
+        .nest("/clients", api::routes::client_routes::client_routes())
         .nest(
             "/providers",
-            api::routes::provider_routes::provider_routes(),
+            api::routes::provider_routes::provider_routes()
+                .route_layer(axum::middleware::from_fn_with_state(
+                    app_state.clone(),
+                    middleware::auth::client_auth_middleware,
+                )),
         )
         .nest(
             "/model-definitions",
-            api::routes::model_definition_routes::model_definition_routes(),
+            api::routes::model_definition_routes::model_definition_routes()
+                .route_layer(axum::middleware::from_fn_with_state(
+                    app_state.clone(),
+                    middleware::auth::client_auth_middleware,
+                )),
         )
         .nest(
             "/pipelines",
-            api::routes::pipeline_routes::pipeline_routes(),
+            api::routes::pipeline_routes::pipeline_routes()
+                .route_layer(axum::middleware::from_fn_with_state(
+                    app_state.clone(),
+                    middleware::auth::client_auth_middleware,
+                )),
         )
         .route(
             "/health",

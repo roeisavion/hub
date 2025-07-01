@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Path, State, Extension},
     http::StatusCode,
     routing::{get, post},
     Json, Router,
@@ -10,6 +10,7 @@ use std::sync::Arc;
 use crate::{
     dto::{CreateModelDefinitionRequest, ModelDefinitionResponse, UpdateModelDefinitionRequest},
     errors::ApiError,
+    middleware::auth::ClientContext,
     services::model_definition_service::ModelDefinitionService,
     AppState,
 };
@@ -44,9 +45,10 @@ pub fn model_definition_routes() -> Router<AppState> {
 #[axum::debug_handler]
 async fn create_model_definition_handler(
     State(service): State<Arc<ModelDefinitionService>>,
+    Extension(client_context): Extension<ClientContext>,
     Json(payload): Json<CreateModelDefinitionRequest>,
 ) -> Result<(StatusCode, Json<ModelDefinitionResponse>), ApiError> {
-    let response = service.create_model_definition(payload).await?;
+    let response = service.create_model_definition(payload, client_context.client_id).await?;
     Ok((StatusCode::CREATED, Json(response)))
 }
 
@@ -62,8 +64,9 @@ async fn create_model_definition_handler(
 #[axum::debug_handler]
 async fn list_model_definitions_handler(
     State(service): State<Arc<ModelDefinitionService>>,
+    Extension(client_context): Extension<ClientContext>,
 ) -> Result<Json<Vec<ModelDefinitionResponse>>, ApiError> {
-    let responses = service.list_model_definitions().await?;
+    let responses = service.list_model_definitions(client_context.client_id).await?;
     Ok(Json(responses))
 }
 
@@ -84,10 +87,11 @@ async fn list_model_definitions_handler(
 async fn get_model_definition_handler(
     State(service): State<Arc<ModelDefinitionService>>,
     Path(id_str): Path<String>,
+    Extension(client_context): Extension<ClientContext>,
 ) -> Result<Json<ModelDefinitionResponse>, ApiError> {
     let id = Uuid::parse_str(&id_str)
         .map_err(|_| ApiError::ValidationError(format!("Invalid UUID format: {}", id_str)))?;
-    let response = service.get_model_definition(id).await?;
+    let response = service.get_model_definition(id, client_context.client_id).await?;
     Ok(Json(response))
 }
 
@@ -108,8 +112,9 @@ async fn get_model_definition_handler(
 async fn get_model_definition_by_key_handler(
     State(service): State<Arc<ModelDefinitionService>>,
     Path(key): Path<String>,
+    Extension(client_context): Extension<ClientContext>,
 ) -> Result<Json<ModelDefinitionResponse>, ApiError> {
-    let response = service.get_model_definition_by_key(key).await?;
+    let response = service.get_model_definition_by_key(key, client_context.client_id).await?;
     Ok(Json(response))
 }
 
@@ -133,11 +138,12 @@ async fn get_model_definition_by_key_handler(
 async fn update_model_definition_handler(
     State(service): State<Arc<ModelDefinitionService>>,
     Path(id_str): Path<String>,
+    Extension(client_context): Extension<ClientContext>,
     Json(payload): Json<UpdateModelDefinitionRequest>,
 ) -> Result<Json<ModelDefinitionResponse>, ApiError> {
     let id = Uuid::parse_str(&id_str)
         .map_err(|_| ApiError::ValidationError(format!("Invalid UUID format: {}", id_str)))?;
-    let response = service.update_model_definition(id, payload).await?;
+    let response = service.update_model_definition(id, payload, client_context.client_id).await?;
     Ok(Json(response))
 }
 
@@ -158,10 +164,11 @@ async fn update_model_definition_handler(
 async fn delete_model_definition_handler(
     State(service): State<Arc<ModelDefinitionService>>,
     Path(id_str): Path<String>,
+    Extension(client_context): Extension<ClientContext>,
 ) -> Result<(), ApiError> {
     // Returns 200 OK with no body on success
     let id = Uuid::parse_str(&id_str)
         .map_err(|_| ApiError::ValidationError(format!("Invalid UUID format: {}", id_str)))?;
-    service.delete_model_definition(id).await?;
+    service.delete_model_definition(id, client_context.client_id).await?;
     Ok(())
 }

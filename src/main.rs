@@ -47,7 +47,7 @@ async fn get_initial_config_and_services() -> anyhow::Result<(
         let ee = ee_integration(pool).await?;
         info!("EE API bundle initialized.");
 
-        match ee.config_provider.fetch_live_config().await {
+        match ee.config_provider.fetch_system_config().await {
             Ok(initial_db_config) => {
                 info!("Successfully fetched initial configuration from database.");
                 if let Err(val_errors) =
@@ -146,7 +146,7 @@ async fn main() -> anyhow::Result<()> {
                 loop {
                     interval.tick().await;
                     info!("Polling database for configuration updates...");
-                    match poller_config_provider.fetch_live_config().await {
+                    match poller_config_provider.fetch_system_config().await {
                         Ok(new_config) => {
                             info!("Successfully fetched updated configuration from database.");
                             info!(
