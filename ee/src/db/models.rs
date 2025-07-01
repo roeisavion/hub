@@ -8,6 +8,17 @@ use sqlx::{
 // Potentially import ProviderType from dto if it's to be used directly here,
 // or handle string conversion in the repository layer.
 
+/// Represents a client record in the database.
+#[derive(Debug, sqlx::FromRow)]
+pub struct Client {
+    pub id: Uuid,
+    pub name: String,
+    pub client_key: String,
+    pub enabled: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
 /// Represents a provider configuration record in the database.
 #[derive(Debug, sqlx::FromRow)] // sqlx::FromRow for mapping query results
 pub struct Provider {
@@ -16,6 +27,7 @@ pub struct Provider {
     pub provider_type: String, // Stored as VARCHAR in DB, maps to ProviderType enum conceptually
     pub config_details: JsonValue, // Stored as JSONB in DB
     pub enabled: bool,
+    pub client_id: Uuid, // Foreign key to clients table - REQUIRED
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -28,6 +40,7 @@ pub struct ModelDefinition {
     pub provider_id: Uuid,
     pub config_details: Option<serde_json::Value>,
     pub enabled: bool,
+    pub client_id: Uuid, // Foreign key to clients table - REQUIRED
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -40,6 +53,7 @@ pub struct Pipeline {
     pub pipeline_type: String,
     pub description: Option<String>,
     pub enabled: bool,
+    pub client_id: Uuid, // Foreign key to clients table - REQUIRED
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -53,6 +67,7 @@ pub struct PipelinePluginConfig {
     pub config_data: serde_json::Value, // Stored as JSONB
     pub enabled: bool,
     pub order_in_pipeline: i32,
+    pub client_id: Uuid, // Foreign key to clients table - REQUIRED
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -66,6 +81,7 @@ pub struct PipelineWithPlugins {
     pub pipeline_type: String,
     pub description: Option<String>,
     pub enabled: bool,
+    pub client_id: Uuid, // Foreign key to clients table - REQUIRED
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub plugins: Vec<PipelinePluginConfig>,

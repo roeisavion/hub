@@ -552,3 +552,41 @@ pub struct PipelineResponseDto {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
+
+// --- Client DTOs ---
+
+/// Request payload for creating a new client.
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema, PartialEq)]
+pub struct CreateClientRequest {
+    /// A unique name for the client.
+    #[schema(example = "acme-corporation")]
+    pub name: String,
+    /// The client key for this client.
+    #[schema(example = "cl_1234567890abcdef")]
+    pub client_key: String,
+    /// Whether this client is enabled. Defaults to true.
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+}
+
+/// Request payload for updating an existing client.
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema, PartialEq)]
+pub struct UpdateClientRequest {
+    /// A new unique name for the client.
+    #[schema(example = "acme-corporation-updated")]
+    pub name: Option<String>,
+    /// Whether this client should be enabled.
+    pub enabled: Option<bool>,
+    // Note: Client key updates are not supported through this endpoint for security
+}
+
+/// Response payload representing a client.
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema, PartialEq)]
+pub struct ClientResponse {
+    pub id: Uuid,
+    pub name: String,
+    // Note: client_key is not exposed in responses for security
+    pub enabled: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
