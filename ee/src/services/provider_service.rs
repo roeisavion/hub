@@ -26,8 +26,15 @@ impl ProviderService {
     pub async fn create_provider(
         &self,
         request: CreateProviderRequest,
+        client_id: Uuid,
     ) -> Result<ProviderResponse, ApiError> {
-        if self.repo.find_by_name(&request.name).await?.is_some() {
+        // Check for name conflicts within the client's scope
+        if self
+            .repo
+            .find_by_name(&request.name, client_id)
+            .await?
+            .is_some()
+        {
             return Err(ApiError::Conflict(format!(
                 "Provider with name '{}' already exists.",
                 request.name
@@ -35,27 +42,47 @@ impl ProviderService {
         }
 
         let provider_type_string_for_db = request.provider_type.to_string();
-
         let config_json_value = serde_json::to_value(&request.config)?;
 
         let db_provider = self
             .repo
-            .create(&request, &provider_type_string_for_db, config_json_value)
+            .create(
+                &request,
+                &provider_type_string_for_db,
+                config_json_value,
+                client_id,
+            )
             .await?;
         Self::map_db_provider_to_response(db_provider)
     }
 
-    pub async fn get_provider(&self, id: Uuid) -> Result<ProviderResponse, ApiError> {
+    pub async fn get_provider(
+        &self,
+        id: Uuid,
+        client_id: Uuid,
+    ) -> Result<ProviderResponse, ApiError> {
         let db_provider = self
             .repo
-            .find_by_id(id)
+            .find_by_id(id, client_id)
             .await?
             .ok_or_else(|| ApiError::NotFound(format!("Provider with ID {} not found.", id)))?;
+
         Self::map_db_provider_to_response(db_provider)
     }
 
-    pub async fn list_providers(&self) -> Result<Vec<ProviderResponse>, ApiError> {
-        let db_providers = self.repo.list().await?;
+    pub async fn list_providers(&self, client_id: Uuid) -> Result<Vec<ProviderResponse>, ApiError> {
+        let db_providers = self.repo.list(client_id).await?;
+
+        db_providers
+            .into_iter()
+            .map(Self::map_db_provider_to_response)
+            .collect()
+    }
+
+    /// Lists all providers across all clients - used for system-level operations
+    pub async fn list_all_providers(&self) -> Result<Vec<ProviderResponse>, ApiError> {
+        let db_providers = self.repo.list_all().await?;
+
         db_providers
             .into_iter()
             .map(Self::map_db_provider_to_response)
@@ -66,19 +93,22 @@ impl ProviderService {
         &self,
         id: Uuid,
         request: UpdateProviderRequest,
+        client_id: Uuid,
     ) -> Result<ProviderResponse, ApiError> {
-        let existing_provider = self.repo.find_by_id(id).await?.ok_or_else(|| {
+        // Verify the provider exists and is accessible by the client
+        let existing_provider = self.repo.find_by_id(id, client_id).await?.ok_or_else(|| {
             ApiError::NotFound(format!("Provider with ID {} not found to update.", id))
         })?;
 
+        // Check for name conflicts within the client's scope
         if let Some(new_name) = &request.name {
-            if new_name != &existing_provider.name
-                && self.repo.find_by_name(new_name).await?.is_some()
-            {
-                return Err(ApiError::Conflict(format!(
-                    "Another provider with name '{}' already exists.",
-                    new_name
-                )));
+            if new_name != &existing_provider.name {
+                if self.repo.find_by_name(new_name, client_id).await?.is_some() {
+                    return Err(ApiError::Conflict(format!(
+                        "Another provider with name '{}' already exists.",
+                        new_name
+                    )));
+                }
             }
         }
 
@@ -91,7 +121,7 @@ impl ProviderService {
 
         let updated_db_provider = self
             .repo
-            .update(id, &request, config_json_value_opt)
+            .update(id, &request, config_json_value_opt, client_id)
             .await?
             .ok_or_else(|| {
                 ApiError::NotFound(format!(
@@ -103,8 +133,9 @@ impl ProviderService {
         Self::map_db_provider_to_response(updated_db_provider)
     }
 
-    pub async fn delete_provider(&self, id: Uuid) -> Result<(), ApiError> {
-        let affected_rows = self.repo.delete(id).await?;
+    pub async fn delete_provider(&self, id: Uuid, client_id: Uuid) -> Result<(), ApiError> {
+        let affected_rows = self.repo.delete(id, client_id).await?;
+
         if affected_rows == 0 {
             Err(ApiError::NotFound(format!(
                 "Provider with ID {} not found, nothing deleted.",

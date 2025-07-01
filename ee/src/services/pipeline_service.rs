@@ -73,22 +73,29 @@ impl PipelineService {
         &self,
         name: &str,
         plugins: &[PipelinePluginConfigDto],
+        client_id: Uuid,
     ) -> Result<(), ApiError> {
-        // Validate pipeline name uniqueness for new pipelines
-        if self.repo.find_pipeline_by_name(name).await?.is_some() {
+        // Validate pipeline name uniqueness for new pipelines within client scope
+        if self
+            .repo
+            .find_pipeline_by_name(name, client_id)
+            .await?
+            .is_some()
+        {
             return Err(ApiError::Conflict(format!(
                 "Pipeline name '{}' already exists",
                 name
             )));
         }
         // Validate plugin configurations
-        self.validate_plugins_config(plugins).await
+        self.validate_plugins_config(plugins, client_id).await
     }
 
     // New method specifically for validating plugin configurations
     async fn validate_plugins_config(
         &self,
         plugins: &[PipelinePluginConfigDto],
+        client_id: Uuid,
     ) -> Result<(), ApiError> {
         for plugin_dto in plugins {
             if plugin_dto.plugin_type == PluginType::ModelRouter {
@@ -100,24 +107,15 @@ impl PipelineService {
                         ))
                     })?;
                 for model_entry in model_router_config.models {
-                    // Assuming model_definition_repo.find_by_key now doesn't need PgPool
-                    // If it does, it needs to be passed or self.model_definition_repo needs to hold the pool
-                    // For now, let's assume it's available or adapted.
-                    // This highlights a potential dependency issue if ModelDefinitionRepository needs a pool per call
-                    // For now, we'll keep the existing call structure, assuming find_by_key is adaptable
-                    // or the repo instance has access to a pool.
-                    // To make this compile, we need to ensure find_by_key can be called.
-                    // Let's assume it does not need the pool directly for this example
-                    // and that its internal state or a shared pool is used.
-                    // THIS IS A PLACEHOLDER - ModelDefinitionRepository interaction needs verification
+                    // Validate that model exists within the client's scope
                     if self
                         .model_definition_repo
-                        .find_by_key(&model_entry.key)
+                        .find_by_key(&model_entry.key, client_id)
                         .await?
                         .is_none()
                     {
                         return Err(ApiError::ValidationError(format!(
-                            "ModelDefinition key '{}' not found for model-router",
+                            "ModelDefinition key '{}' not found for model-router within client scope",
                             model_entry.key
                         )));
                     }
@@ -131,16 +129,24 @@ impl PipelineService {
     pub async fn create_pipeline(
         &self,
         request: CreatePipelineRequestDto,
+        client_id: Uuid,
     ) -> Result<PipelineResponseDto, ApiError> {
         // Use the more specific validation method for creation
-        self.validate_pipeline_for_creation(&request.name, &request.plugins)
+        self.validate_pipeline_for_creation(&request.name, &request.plugins, client_id)
             .await?;
-        let created_db_pipeline = self.repo.create_pipeline_with_plugins(&request).await?;
+        let created_db_pipeline = self
+            .repo
+            .create_pipeline_with_plugins(&request, client_id)
+            .await?;
         self.map_db_pipeline_to_response(created_db_pipeline)
     }
 
-    pub async fn get_pipeline(&self, id: Uuid) -> Result<PipelineResponseDto, ApiError> {
-        let db_pipeline = self.repo.find_pipeline_by_id(id).await?;
+    pub async fn get_pipeline(
+        &self,
+        id: Uuid,
+        client_id: Uuid,
+    ) -> Result<PipelineResponseDto, ApiError> {
+        let db_pipeline = self.repo.find_pipeline_by_id(id, client_id).await?;
         match db_pipeline {
             Some(p) => self.map_db_pipeline_to_response(p),
             None => Err(ApiError::NotFound(format!(
@@ -150,8 +156,12 @@ impl PipelineService {
         }
     }
 
-    pub async fn get_pipeline_by_name(&self, name: &str) -> Result<PipelineResponseDto, ApiError> {
-        let db_pipeline = self.repo.find_pipeline_by_name(name).await?;
+    pub async fn get_pipeline_by_name(
+        &self,
+        name: &str,
+        client_id: Uuid,
+    ) -> Result<PipelineResponseDto, ApiError> {
+        let db_pipeline = self.repo.find_pipeline_by_name(name, client_id).await?;
         match db_pipeline {
             Some(p) => self.map_db_pipeline_to_response(p),
             None => Err(ApiError::NotFound(format!(
@@ -161,8 +171,20 @@ impl PipelineService {
         }
     }
 
-    pub async fn list_pipelines(&self) -> Result<Vec<PipelineResponseDto>, ApiError> {
-        let db_pipelines = self.repo.list_pipelines().await?;
+    pub async fn list_pipelines(
+        &self,
+        client_id: Uuid,
+    ) -> Result<Vec<PipelineResponseDto>, ApiError> {
+        let db_pipelines = self.repo.list_pipelines(client_id).await?;
+        db_pipelines
+            .into_iter()
+            .map(|p| self.map_db_pipeline_to_response(p))
+            .collect()
+    }
+
+    /// Lists all pipelines across all clients - used for system-level operations
+    pub async fn list_all_pipelines(&self) -> Result<Vec<PipelineResponseDto>, ApiError> {
+        let db_pipelines = self.repo.list_all_pipelines().await?;
         db_pipelines
             .into_iter()
             .map(|p| self.map_db_pipeline_to_response(p))
@@ -173,9 +195,10 @@ impl PipelineService {
         &self,
         id: Uuid,
         request: UpdatePipelineRequestDto,
+        client_id: Uuid,
     ) -> Result<PipelineResponseDto, ApiError> {
-        // Ensure pipeline exists before update
-        let existing_pipeline_opt = self.repo.find_pipeline_by_id(id).await?;
+        // Ensure pipeline exists and belongs to client before update
+        let existing_pipeline_opt = self.repo.find_pipeline_by_id(id, client_id).await?;
         if existing_pipeline_opt.is_none() {
             return Err(ApiError::NotFound(format!(
                 "Pipeline with ID {} not found for update",
@@ -183,9 +206,11 @@ impl PipelineService {
             )));
         }
 
-        // Validate new name uniqueness if name is being changed
+        // Validate new name uniqueness if name is being changed (within client scope)
         if let Some(new_name) = &request.name {
-            if let Some(found_pipeline_by_name) = self.repo.find_pipeline_by_name(new_name).await? {
+            if let Some(found_pipeline_by_name) =
+                self.repo.find_pipeline_by_name(new_name, client_id).await?
+            {
                 if found_pipeline_by_name.id != id {
                     // It's a different pipeline with the same new name
                     return Err(ApiError::Conflict(format!(
@@ -198,14 +223,14 @@ impl PipelineService {
 
         // Only validate plugins if they are provided in the request
         if let Some(plugins) = &request.plugins {
-            self.validate_plugins_config(plugins).await?;
+            self.validate_plugins_config(plugins, client_id).await?;
         }
-        let updated_db_pipeline = self.repo.update_pipeline(id, &request).await?;
+        let updated_db_pipeline = self.repo.update_pipeline(id, &request, client_id).await?;
         self.map_db_pipeline_to_response(updated_db_pipeline)
     }
 
-    pub async fn delete_pipeline(&self, id: Uuid) -> Result<(), ApiError> {
-        let affected_rows = self.repo.delete_pipeline(id).await?;
+    pub async fn delete_pipeline(&self, id: Uuid, client_id: Uuid) -> Result<(), ApiError> {
+        let affected_rows = self.repo.delete_pipeline(id, client_id).await?;
         if affected_rows == 0 {
             return Err(ApiError::NotFound(format!(
                 "Pipeline with ID {} not found for deletion",

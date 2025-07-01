@@ -74,13 +74,16 @@ impl ConfigProviderService {
         }
     }
 
-    pub async fn fetch_live_config(&self) -> Result<GatewayConfig> {
-        info!("Fetching live configuration from database...");
+    pub async fn fetch_live_config(&self, client_id: Uuid) -> Result<GatewayConfig> {
+        info!(
+            "Fetching live configuration from database for client {}...",
+            client_id
+        );
         let mut gateway_config = GatewayConfig::default();
 
         let ee_providers = self
             .provider_service
-            .list_providers()
+            .list_providers(client_id)
             .await
             .map_err(|e| anyhow!("Failed to fetch providers from DB: {:?}", e))?;
 
@@ -105,7 +108,7 @@ impl ConfigProviderService {
 
         let ee_models = self
             .model_definition_service
-            .list_model_definitions()
+            .list_model_definitions(client_id)
             .await
             .map_err(|e| anyhow!("Failed to fetch model definitions from DB: {:?}", e))?;
         for m_dto in ee_models.into_iter().filter(|m| m.enabled) {
@@ -118,7 +121,7 @@ impl ConfigProviderService {
 
         let ee_pipelines = self
             .pipeline_service
-            .list_pipelines()
+            .list_pipelines(client_id)
             .await
             .map_err(|e| anyhow!("Failed to fetch pipelines from DB: {:?}", e))?;
         for pl_dto in ee_pipelines.into_iter().filter(|pl| pl.enabled) {
@@ -128,7 +131,73 @@ impl ConfigProviderService {
             }
         }
 
-        info!("Successfully fetched and transformed live configuration.");
+        info!(
+            "Successfully fetched and transformed live configuration for client {}.",
+            client_id
+        );
+        Ok(gateway_config)
+    }
+
+    /// Fetches configuration for all clients combined - used by the main gateway for routing
+    /// This method provides system-level access to all configurations across clients
+    pub async fn fetch_system_config(&self) -> Result<GatewayConfig> {
+        info!("Fetching system-wide configuration from database (all clients)...");
+        let mut gateway_config = GatewayConfig::default();
+
+        // Fetch all providers across all clients
+        let ee_providers = self
+            .provider_service
+            .list_all_providers()
+            .await
+            .map_err(|e| anyhow!("Failed to fetch all providers from DB: {:?}", e))?;
+
+        // Maps Provider DTO Uuid to its key (String) for model linking
+        let mut provider_dto_id_to_key_map: HashMap<Uuid, String> = HashMap::new();
+
+        for p_dto in ee_providers.into_iter().filter(|p| p.enabled) {
+            // Store the original DTO ID for mapping before transforming
+            let original_dto_id = p_dto.id;
+            match self.transform_provider_dto(p_dto).await {
+                Ok(core_provider) => {
+                    // Use the DTO's id for the map key, and core_provider's key for the value
+                    provider_dto_id_to_key_map.insert(original_dto_id, core_provider.key.clone());
+                    gateway_config.providers.push(core_provider);
+                }
+                Err(e) => error!(
+                    "Failed to transform provider DTO with ID {}: {:?}. Skipping.",
+                    original_dto_id, e
+                ),
+            }
+        }
+
+        // Fetch all model definitions across all clients
+        let ee_models = self
+            .model_definition_service
+            .list_all_model_definitions()
+            .await
+            .map_err(|e| anyhow!("Failed to fetch all model definitions from DB: {:?}", e))?;
+        for m_dto in ee_models.into_iter().filter(|m| m.enabled) {
+            // Use the provider_id from the model DTO (which is a Uuid) to lookup in the map
+            match Self::transform_model_dto(m_dto, &provider_dto_id_to_key_map) {
+                Ok(core_model) => gateway_config.models.push(core_model),
+                Err(e) => error!("Failed to transform model DTO: {:?}. Skipping.", e),
+            }
+        }
+
+        // Fetch all pipelines across all clients
+        let ee_pipelines = self
+            .pipeline_service
+            .list_all_pipelines()
+            .await
+            .map_err(|e| anyhow!("Failed to fetch all pipelines from DB: {:?}", e))?;
+        for pl_dto in ee_pipelines.into_iter().filter(|pl| pl.enabled) {
+            match Self::transform_pipeline_dto(pl_dto) {
+                Ok(core_pipeline) => gateway_config.pipelines.push(core_pipeline),
+                Err(e) => error!("Failed to transform pipeline DTO: {:?}. Skipping.", e),
+            }
+        }
+
+        info!("Successfully fetched and transformed system-wide configuration.");
         Ok(gateway_config)
     }
 
