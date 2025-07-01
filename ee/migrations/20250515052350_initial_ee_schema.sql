@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS hub_llmgateway_ee_providers (
     name VARCHAR(255) NOT NULL UNIQUE,       -- User-defined unique name for this provider config instance
     provider_type VARCHAR(50) NOT NULL,     -- e.g., 'openai', 'azure', 'bedrock' (matches ProviderType enum variants)
     config_details JSONB NOT NULL,          -- Stores specific config like API keys, region, resource_name
+    client_id UUID NOT NULL,                -- Every provider must belong to a client
     enabled BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -14,6 +15,9 @@ CREATE TABLE IF NOT EXISTS hub_llmgateway_ee_providers (
 
 -- Optional: Add an index on provider_type for faster lookups if you often query by type
 CREATE INDEX IF NOT EXISTS idx_hub_llmgateway_ee_providers_provider_type ON hub_llmgateway_ee_providers(provider_type);
+
+-- Index for client_id for faster client-based filtering
+CREATE INDEX IF NOT EXISTS idx_hub_llmgateway_ee_providers_client_id ON hub_llmgateway_ee_providers(client_id);
 
 -- Optional: Trigger to automatically update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_modified_column()

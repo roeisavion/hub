@@ -6,6 +6,7 @@ CREATE TABLE hub_llmgateway_ee_model_definitions (
     key TEXT NOT NULL UNIQUE,                 -- e.g., "gpt-4o-openai", "my-custom-claude"
     model_type TEXT NOT NULL,             -- e.g., "gpt-4o", "claude-3-opus-20240229"
     provider_id UUID NOT NULL,
+    client_id UUID NOT NULL,                  -- Every model definition must belong to a client
     config_details JSONB,                     -- Provider-specific model configurations
     enabled BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -21,6 +22,9 @@ CREATE UNIQUE INDEX idx_model_definitions_key ON hub_llmgateway_ee_model_definit
 
 -- Index for faster lookups by provider_id
 CREATE INDEX idx_model_definitions_provider_id ON hub_llmgateway_ee_model_definitions(provider_id);
+
+-- Index for faster lookups by client_id
+CREATE INDEX idx_model_definitions_client_id ON hub_llmgateway_ee_model_definitions(client_id);
 
 -- Trigger to automatically update updated_at timestamp
 -- Assumes update_modified_column function is created by a previous migration (e.g., for providers table)

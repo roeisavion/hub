@@ -6,6 +6,7 @@ CREATE TABLE hub_llmgateway_ee_pipelines (
     name VARCHAR(255) UNIQUE NOT NULL,
     pipeline_type VARCHAR(100) NOT NULL,
     description TEXT,
+    client_id UUID NOT NULL,                  -- Every pipeline must belong to a client
     enabled BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -17,6 +18,7 @@ CREATE TABLE hub_llmgateway_ee_pipeline_plugin_configs (
     pipeline_id UUID NOT NULL REFERENCES hub_llmgateway_ee_pipelines(id) ON DELETE CASCADE,
     plugin_type VARCHAR(100) NOT NULL,
     config_data JSONB NOT NULL,
+    client_id UUID NOT NULL,                  -- Every plugin config must belong to a client
     enabled BOOLEAN NOT NULL DEFAULT TRUE,
     order_in_pipeline INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -26,8 +28,10 @@ CREATE TABLE hub_llmgateway_ee_pipeline_plugin_configs (
 
 -- Create indexes for faster lookups
 CREATE INDEX idx_pipeline_name ON hub_llmgateway_ee_pipelines(name);
+CREATE INDEX idx_pipeline_client_id ON hub_llmgateway_ee_pipelines(client_id);
 CREATE INDEX idx_pipeline_plugin_pipeline_id ON hub_llmgateway_ee_pipeline_plugin_configs(pipeline_id);
 CREATE INDEX idx_pipeline_plugin_type ON hub_llmgateway_ee_pipeline_plugin_configs(plugin_type);
+CREATE INDEX idx_pipeline_plugin_client_id ON hub_llmgateway_ee_pipeline_plugin_configs(client_id);
 
 -- Trigger to update 'updated_at' timestamp on row update for pipelines
 CREATE OR REPLACE FUNCTION update_modified_column()
